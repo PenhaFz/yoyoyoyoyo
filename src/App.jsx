@@ -287,6 +287,51 @@ function calcularTotais(selecionados) {
   );
 }
 
+function analisarHistorialCondutor(selecionados, dados = {}) {
+  const historial = normalize(dados.historialCondutor || "");
+  const linhas = [];
+  let coimaSugerida = 0;
+  let existeAgravamento = false;
+
+  selecionados.forEach((a) => {
+    const artigo = String(a.artigo).toLowerCase();
+    const regex = new RegExp(`art\\\\.?\\\\s*${artigo.replace(".", "\\\\.")}|artigo\\\\s*${artigo.replace(".", "\\\\.")}`, "gi");
+    const ocorrencias = (historial.match(regex) || []).length;
+
+    let valor = a.coimaMin || 0;
+    let texto = "";
+
+    if (ocorrencias >= 5) {
+      valor = a.coimaMax || a.coimaMin || 0;
+      texto = `Art. ${a.artigo}.º — ${ocorrencias} ocorrências anteriores: aplicar coima máxima.`;
+      existeAgravamento = true;
+    } else if (ocorrencias >= 3) {
+      valor = Math.min(Math.round((a.coimaMin || 0) * 1.4), a.coimaMax || Infinity);
+      texto = `Art. ${a.artigo}.º — ${ocorrencias} ocorrências anteriores: agravamento sugerido de +40%.`;
+      existeAgravamento = true;
+    } else if (ocorrencias === 2) {
+      valor = Math.min(Math.round((a.coimaMin || 0) * 1.25), a.coimaMax || Infinity);
+      texto = `Art. ${a.artigo}.º — 2 ocorrências anteriores: agravamento sugerido de +25%.`;
+      existeAgravamento = true;
+    } else if (ocorrencias === 1) {
+      valor = Math.min(Math.round((a.coimaMin || 0) * 1.1), a.coimaMax || Infinity);
+      texto = `Art. ${a.artigo}.º — 1 ocorrência anterior: agravamento sugerido de +10%.`;
+      existeAgravamento = true;
+    }
+
+    if (texto) linhas.push(texto);
+    coimaSugerida += valor;
+  });
+
+  return {
+    existeAgravamento,
+    coimaSugerida,
+    texto: linhas.length
+      ? linhas.join("\n")
+      : "[sem reincidência identificada no historial do condutor]",
+  };
+}
+
 function calcularTotaisOperacionais(selecionados, dados = {}) {
   const base = calcularTotais(selecionados);
   const agravantes = gerarAgravantesLegais(selecionados, dados);
